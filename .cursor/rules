@@ -1,0 +1,251 @@
+# WideMCP — Cursor Agent Rules
+# Read this file every session. No exceptions.
+
+---
+
+## 1. What is WideMCP
+
+WideMCP is a curated catalogue of production-quality, open source MCP
+(Model Context Protocol) servers with an orchestration layer on top.
+
+Platform identity: Local-first. Privacy-first. Production-grade.
+Domain: widemcp.dev
+GitHub: github.com/widemcp
+npm scope: @widemcp
+
+Every tool in the catalogue is:
+- Open source and free
+- Runs on the user's machine — nothing sent to WideMCP servers
+- Auto-installs dependencies with user permission
+- Scored with an automated Trust Score before publishing
+
+---
+
+## 2. Current Phase and Sprint
+
+Active phase: Phase 0 — Foundation
+Active sprint: Sprint 0.2 — Hello World MCP Server
+Current goal: A working TypeScript MCP server with one echo tool
+responding inside Claude Desktop.
+
+UPDATE THIS SECTION AT THE START OF EVERY NEW SPRINT.
+
+---
+
+## 3. Architecture — Brief
+
+Five layers. Build bottom-up.
+
+Layer 0: Auto-Discovery Engine     (Phase 6 — built last)
+Layer 1: MCP Servers               (Phase 1-2 — building now)
+Layer 2: Quality Trust Layer       (Phase 3)
+Layer 3: Orchestration Engine      (Phase 4 — Java/Spring Boot)
+Layer 4A: Desktop App              (Phase 5 — Electron)
+Layer 4B: Developer catalogue      (widemcp.dev)
+
+Launch servers:
+- @widemcp/av-server — FFmpeg, Whisper, yt-dlp, HandBrake, sox
+- @widemcp/ha-server — Home Assistant, MQTT, Node-RED, ESPHome, Zigbee2MQTT
+
+Monorepo structure:
+widemcp/
+  packages/
+    shared/        <- shared utilities, error types, dependency checker
+    av-server/     <- Audio/Video MCP server (Phase 1)
+    ha-server/     <- Home Automation MCP server (Phase 2)
+    orchestrator/  <- Java Spring Boot (Phase 4)
+    desktop-app/   <- Electron app (Phase 5)
+  docs/            <- architecture, components, workflows docs
+  .cursor/         <- this file
+  .agents/         <- scratchpad (gitignored)
+
+---
+
+## 4. Tech Stack
+
+MCP Servers        -> TypeScript + MCP SDK
+Shared utilities   -> TypeScript
+Orchestration      -> Java + Spring Boot
+Glue/scripts       -> Python where needed
+Containers         -> Docker
+CI/CD              -> GitHub Actions
+
+Key dependencies:
+- @modelcontextprotocol/sdk — MCP protocol implementation
+- zod — input validation and schema definition
+- vitest — unit and integration testing
+- typescript — language
+- ts-node — development runtime
+
+---
+
+## 5. The Tool Pattern — Never Deviate
+
+Every tool follows this exact pattern:
+
+src/tools/<toolname>.ts
+  exports: register<ToolName>Tools(server: McpServer): void
+    calls: server.tool(name, zodSchema, asyncHandler)
+
+src/index.ts
+  calls every register function
+  this is the ONLY file that imports all tools
+
+Every tool must have:
+- snake_case name describing exactly what it does
+- 1-2 sentence description: what it does and when to use it
+- Zod schema for every input with .describe() on every field
+- Explicit TypeScript return type — no untyped objects
+- Structured error handling — never throw raw errors to MCP layer
+- JSDoc comment with a real input/output example
+- At least one unit test and one integration test
+
+---
+
+## 6. Security Rules — No Exceptions
+
+- Never pass unsanitised user input to a shell command
+- Always use argument arrays, never string concatenation for commands
+- Never hardcode credentials — all secrets via environment variables
+- Validate input file paths exist before passing to any tool
+- npm audit must pass with zero high or critical vulnerabilities
+- No secrets ever committed to git
+
+---
+
+## 7. Error Handling Pattern
+
+Never throw raw errors. Always return structured MCP errors:
+
+try {
+  // tool logic
+} catch (error) {
+  return {
+    content: [{
+      type: "text",
+      text: `Error: ${error instanceof Error ? error.message : String(error)}`
+    }],
+    isError: true
+  };
+}
+
+---
+
+## 8. Dependency Auto-Install Pattern
+
+Every tool checks for its dependency before running.
+Use the shared dependency checker — never inline this logic.
+
+import { ensureDependency } from '@widemcp/shared';
+
+At server startup:
+await ensureDependency('yt-dlp', 'brew install yt-dlp');
+await ensureDependency('ffmpeg', 'brew install ffmpeg');
+
+The checker:
+1. Checks if the command exists
+2. If missing — prompts user with clear message
+3. Waits for approval before installing
+4. Installs silently on approval
+5. Throws a clear error if user declines
+
+---
+
+## 9. Trust Score Requirements
+
+Every server must score >= 80 before any release is tagged.
+
+Security       30%   Zero high/critical vulns
+Test coverage  25%   80%+ line coverage
+Documentation  20%   Every tool + param described
+Maintenance    15%   Deps < 6 months old
+Compatibility  10%   Docker build passes
+
+---
+
+## 10. Coding Standards
+
+- TypeScript strict mode always on
+- No any types — ever
+- Prefer async/await over .then() chains
+- Use named exports not default exports for tools
+- File names in kebab-case: yt-dlp.ts, ffmpeg.ts
+- Function names in camelCase: registerYtdlpTools
+- Tool names in snake_case: download_audio, get_media_info
+- Constants in UPPER_SNAKE_CASE
+- Interfaces prefixed with I: IToolResult
+
+---
+
+## 11. What NOT to Build
+
+Explicitly out of scope — do not suggest or implement:
+
+- Server-side tool execution (no WideMCP cloud processing)
+- Proprietary or paid tool wrappers
+- Our own AI model or inference
+- Real-time streaming tools
+- Mobile app (desktop first)
+- User accounts or authentication in v1
+- Any tool that is not open source and free
+
+---
+
+## 12. Session Startup Checklist
+
+At the start of every session:
+1. Read this file (auto-loaded by Cursor)
+2. Ask the user: "Which sprint and tool are we working on today?"
+3. Load relevant docs with @file based on their answer
+4. Check section 2 (Current Phase and Sprint) for context
+5. Never assume what was done last session — always ask
+
+---
+
+## 13. Before Suggesting Any Code
+
+Always check:
+- Does this follow the tool pattern in section 5?
+- Does this follow security rules in section 6?
+- Does this use structured error handling from section 7?
+- Does this use the shared dependency checker from section 8?
+- Are all inputs validated with Zod?
+- Are there no any types?
+
+If any answer is no — fix it before suggesting.
+
+---
+
+## 14. Docs to Load on Demand
+
+Load these with @file when working on the relevant area:
+
+Working on overall architecture  -> @docs/architecture.md
+Working on specific components   -> @docs/components.md
+Working on tool workflows        -> @docs/workflows.md
+Working on package dependencies  -> @docs/dependencies.md
+Working on API interfaces        -> @docs/interfaces.md
+Working on current sprint tasks  -> @docs/AGENTS.md
+
+These files are generated and updated by Cursor after real code exists.
+Do not load them until Phase 1 Sprint 1.1 is complete.
+
+---
+
+## 15. Commit Message Format
+
+type(scope): short description
+
+Types: feat, fix, docs, test, refactor, chore
+Scope: av-server, ha-server, shared, orchestrator, desktop-app, docs
+
+Examples:
+feat(av-server): add yt-dlp download_audio tool
+test(av-server): add integration tests for ffmpeg convert_media
+fix(shared): handle missing dependency gracefully
+docs(av-server): update README with sox examples
+
+---
+
+Last updated: April 2026 — Sprint 0.2
+Update section 2 at the start of every new sprint.

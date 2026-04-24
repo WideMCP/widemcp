@@ -1,0 +1,15 @@
+{
+  "name": "widemcp",
+  "version": "1.0.0",
+  "description": "Production-grade open source MCP infrastructure",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "author": "widemcp",
+  "license": "Apache-2.0"
+}

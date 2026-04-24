@@ -1,0 +1,29 @@
+{
+  "name": "@widemcp/av-server",
+  "version": "0.1.0",
+  "description": "Audio/Video MCP server — yt-dlp, FFmpeg, Whisper, HandBrake, sox",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "vitest"
+  },
+  "keywords": [
+    "mcp",
+    "audio",
+    "video",
+    "ffmpeg",
+    "whisper",
+    "ytdlp"
+  ],
+  "author": "widemcp",
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  }
+}
