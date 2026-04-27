@@ -4,6 +4,7 @@
   "description": "Audio/Video MCP server — yt-dlp, FFmpeg, Whisper, HandBrake, sox",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/index.ts",
@@ -23,7 +24,10 @@
     "access": "public"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^4.3.6"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
   }
 }
