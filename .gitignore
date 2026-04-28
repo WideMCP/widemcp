@@ -5,6 +5,15 @@ dist/
 # Agent scratchpad — never commit
 .agents/scratchpad/
 
+# Task folders — never commit
+.agents/tasks/
+
+# Canonical agent workflow doc (local-only)
+packages/AGENTS.md
+
+# Cursor steering rules (local-only)
+.cursor/rules
+
 # Environment files — never commit
 .env
 .env.local

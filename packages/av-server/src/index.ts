@@ -5,8 +5,13 @@ import { z } from "zod";
 const server = new McpServer({
   name: "widemcp-av",
   version: "0.1.0",
-  description: "WideMCP Audio/Video MCP Server"
+  description: "WideMCP Audio/Video MCP Server",
 });
+
+// server.tool() is marked deprecated in SDK 1.29.0 in favour of registerTool()
+// but registerTool() is not yet available in this version.
+// Monitor SDK releases and migrate when registerTool() ships.
+// Track: https://github.com/modelcontextprotocol/typescript-sdk
 
 /**
  * Echo tool — Hello World
@@ -16,10 +21,11 @@ const server = new McpServer({
  */
 server.tool(
   "echo",
+  "Echoes back any message you send. Used for testing the server connection.",
   { message: z.string().describe("Message to echo back") },
   async ({ message }) => ({
-    content: [{ type: "text", text: `Echo: ${message}` }]
-  })
+    content: [{ type: "text", text: `Echo: ${message}` }],
+  }),
 );
 
 async function main() {
