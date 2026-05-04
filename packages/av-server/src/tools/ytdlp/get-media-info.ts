@@ -2,12 +2,29 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ensureDependency, runCommand } from "@widemcp/shared";
 
+const YT_DLP_INSTALL = "https://github.com/yt-dlp/yt-dlp#installation";
+
+/** Max characters of stringified raw JSON when `include_raw` is true (avoids huge MCP payloads). */
+const MAX_RAW_JSON_CHARS = 200_000;
+
 const getMediaInfoInputSchema = {
-  url: z.string().url().describe("Media URL to inspect (video or audio page URL)"),
+  url: z
+    .string()
+    .url()
+    .describe(
+      "Media URL for yt-dlp (https audio/video pages, playlists when allowed, or file:// local paths). " +
+        "Whatever you pass is forwarded to yt-dlp as-is—only use URLs you intend to read.",
+    ),
   noPlaylist: z
     .boolean()
     .optional()
     .describe("If true, avoid expanding playlists (recommended). Defaults to true."),
+  include_raw: z
+    .boolean()
+    .optional()
+    .describe(
+      "If true, append raw yt-dlp JSON (truncated if very large). Defaults to false to keep responses small.",
+    ),
 };
 
 type GetMediaInfoInput = z.infer<z.ZodObject<typeof getMediaInfoInputSchema>>;
@@ -31,14 +48,29 @@ function summarize(info: GetMediaInfoResult): string {
   return lines.join("\n");
 }
 
+/**
+ * yt-dlp may print progress or warnings on stdout before/after the JSON line.
+ * Scan non-empty lines from the bottom and parse the first line that looks like JSON.
+ */
 function parseYtDlpJson(stdout: string): unknown {
-  const trimmed = stdout.trim();
-  if (trimmed.length === 0) throw new Error("yt-dlp returned empty output");
+  const lines = stdout
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
 
-  const lastLine = trimmed.split("\n").reverse().find((l) => l.trim().length > 0);
-  if (!lastLine) throw new Error("yt-dlp output could not be parsed");
+  if (lines.length === 0) throw new Error("yt-dlp returned empty output");
 
-  return JSON.parse(lastLine);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (!line.startsWith("{") && !line.startsWith("[")) continue;
+    try {
+      return JSON.parse(line) as unknown;
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error("yt-dlp output could not be parsed as JSON");
 }
 
 function normalizeYtDlpInfo(raw: unknown): GetMediaInfoResult {
@@ -58,14 +90,26 @@ function normalizeYtDlpInfo(raw: unknown): GetMediaInfoResult {
   };
 }
 
+function formatRawJsonAppend(info: GetMediaInfoResult, includeRaw: boolean): string | null {
+  if (!includeRaw) {
+    return "\n\nRaw JSON omitted (set include_raw to true for a truncated raw dump).";
+  }
+  let text = JSON.stringify(info.raw, null, 2);
+  if (text.length > MAX_RAW_JSON_CHARS) {
+    text = `${text.slice(0, MAX_RAW_JSON_CHARS)}\n\n… truncated after ${MAX_RAW_JSON_CHARS} characters`;
+  }
+  return `\n\nRaw JSON:\n${text}`;
+}
+
 export function registerGetMediaInfoTools(server: McpServer): void {
   server.tool(
     "get_media_info",
-    "Returns basic metadata for a media URL using yt-dlp (title, duration, uploader, extractor).",
+    "Returns basic metadata for a media URL using yt-dlp (title, duration, uploader, extractor). " +
+      "Supports remote https URLs and local file:// paths—both are passed to yt-dlp; only pass URLs you trust.",
     getMediaInfoInputSchema,
     async (input: GetMediaInfoInput) => {
       try {
-        const dep = ensureDependency("yt-dlp", "brew install yt-dlp");
+        const dep = ensureDependency("yt-dlp", YT_DLP_INSTALL);
         if (!dep.ok) {
           return {
             content: [
@@ -81,7 +125,11 @@ export function registerGetMediaInfoTools(server: McpServer): void {
         const noPlaylist = input.noPlaylist ?? true;
         const args = ["--dump-json", ...(noPlaylist ? ["--no-playlist"] : []), input.url];
 
-        const result = await runCommand("yt-dlp", args, { timeoutMs: 120_000 });
+        const result = await runCommand("yt-dlp", args, {
+          timeoutMs: 120_000,
+          maxStdoutBytes: 15 * 1024 * 1024,
+          maxStderrBytes: 15 * 1024 * 1024,
+        });
         if (!result.ok) {
           return {
             content: [
@@ -102,15 +150,11 @@ export function registerGetMediaInfoTools(server: McpServer): void {
 
         const raw = parseYtDlpJson(result.stdout);
         const info = normalizeYtDlpInfo(raw);
+        const includeRaw = input.include_raw ?? false;
+        const rawAppend = formatRawJsonAppend(info, includeRaw);
 
         return {
-          content: [
-            { type: "text" as const, text: summarize(info) },
-            {
-              type: "text" as const,
-              text: `\nRaw JSON:\n${JSON.stringify(info.raw, null, 2)}`,
-            },
-          ],
+          content: [{ type: "text" as const, text: summarize(info) + rawAppend }],
         };
       } catch (error) {
         return {
@@ -131,5 +175,5 @@ export const __test__ = {
   parseYtDlpJson,
   normalizeYtDlpInfo,
   summarize,
+  formatRawJsonAppend,
 };
-

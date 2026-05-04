@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build -w @widemcp/shared && npm run build -w @widemcp/av-server",
     "test": "npm run test --workspaces",
     "lint": "eslint packages",
     "lint:fix": "eslint packages --fix",
