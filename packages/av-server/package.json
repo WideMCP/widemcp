@@ -25,9 +25,13 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@widemcp/shared": "^0.1.0",
     "zod": "^3.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0"
+    "@types/node": "^25.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

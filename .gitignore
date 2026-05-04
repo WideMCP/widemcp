@@ -21,6 +21,8 @@ packages/AGENTS.md
 # Mac
 .DS_Store
 
-# Build
+# Build / coverage
 *.js.map
 *.d.ts.map
+coverage/
+*.tsbuildinfo
